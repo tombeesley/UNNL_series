@@ -1,0 +1,295 @@
+---
+title: "UNW01 Lab report"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+
+library(tidyverse)
+library(afex)
+library(ggrepel)
+library(apa)
+
+load("UNW01_proc_data.RData")
+
+data <- ungroup(data)
+data_dem <- ungroup(data_dem)
+test_data <- ungroup(test_data)
+
+
+```
+
+## Rationale
+
+This is the first attempt at Exp 3.1 from the ESRC Uncertainty grant. From the proposal:
+
+Pearce et al. (1982) describe changes in associability as being determined by events across a “window of trials”, and in their model the size of this window is fixed. In contrast, we have previously suggested (Easdale et al., 2019) that this window could be dynamic. In a stable environment, the current state of the world can be estimated from just a few recent trials. Sudden changes in the environment will therefore be felt very keenly in this context. In contrast, experiencing a continued period of expected uncertainty might increase the window of trials over which associative knowledge is computed (and associability changes). Hence, sudden changes in the environment would be less noticeable, since they become “washed out” in the learning process, because of their integration with a longer period of past experience.
+
+## Design
+
+The design is shown in the table below. In Phase 1, participants learnt about the relationship between 4 cues and 4 outcomes. In one group of participants, the "certain" condition, these relationships were deterministic (p = 1). In another group of participants, the uncertain condition, these relationships were probabilistic (with a p = .8 contingency). In the probabilistic condition, the alternative outcomes were always one other cue (A-O2; B-O1; C-O4; D-O3).
+
+In Phase 2a, the associations for two of these cues changed ("long change"), while the associations for the other two cues were the same as those trained in Phase 1 (note that in the uncertain condition we only present the probable outcome in this phase; the certain/uncertain conditions are equivalent after Phase 1). In Phase 2b, all cues were now trained in "new" associations for two pairings each.  
+
+Cue type |Phase 1 | Phase 2a | Phase 2b 
+:--------|:-------|:---------|:--------
+Long-change | A-O1 (x30) | A-O3 (x8) | A-O3 (x2)
+Short-change | B-O2 (x30) | B-O2 (x8) | B-O3 (x2)
+Long-change | C-O3 (x30) | C-O1 (x8) | C-O1 (x2)
+Short-change | D-O4 (x30) | D-O4 (x8) | D-O1 (x2)
+
+Our hypothesis was that the uncertainty experienced in the first stage will affect the rate of acquisition in Phase 2 (following Easdale et al., 2019). Specifically, we wished to test whether uncertainty increases the "window" over which knowledge needs to be accumulated. If this is the case, the uncertain condition should learn relatively effectively about the "long-change" A-O3 and C-O1 associations (trained in both Phase 2a and 2b), but struggle to learn about "short-change" associations B-O3 and D-O1 in Phase 2b. 
+
+We therefore predicted a big difference in the amount of learning about "long-change" and "short-change" associations in the uncertain condition. In contrast, we hypothesised that the "window" would be relatively short in the certain condition. As such, learning will be relatively rapid for all associations, irrespective of whether they are "long-change" or "short-change". We therefore predicted a smaller difference in the amount of learning about "long-change" and "short-change" associations. 
+
+A final test phase was used to determine the extent of learning for all cue-outcome associations. Participants saw each of the 4 cues (in a random order) and had to give ratings on a 10 point scale for each of the 4 outcomes. 
+
+## Participants
+
+```{r}
+
+cert_cond_n <- 
+  data_dem %>%
+  count(cert_cond)
+
+
+```
+
+There were `r cert_cond_n[1,2]` participants in the certain condition, and `r cert_cond_n[2,2]` in the uncertain condition. 
+
+## Results
+
+
+### Phase 1
+In Phase 1 we plot the proportion of probable outcome responses (following Beesley et al., 2015). For example, this is the proportion of trials on which participants select O1 for cue A. In the certain condition this equates to accuracy.
+
+```{r }
+
+data %>% 
+  filter(phase == 1,
+         accuracy != -99,
+         !is.na(prob_resp)) %>% 
+  group_by(block, cert_cond) %>% 
+  summarise(meanProb = mean(prob_resp),
+            probSE = sd(prob_resp)/sqrt(n())) %>% 
+  ggplot(aes(x = block, y = meanProb)) +
+  geom_line(aes(group = cert_cond), colour = "black", size = 1) +
+  geom_errorbar(aes(ymin = meanProb - probSE,
+                    ymax = meanProb + probSE),
+                width = .2) +
+  geom_point(aes(fill = cert_cond), shape = 21, size = 4) +
+  theme_classic(base_size = 14) +
+  labs(x = "Blocks of 8 trials",
+       y = "Proportion of probable responses",
+       title = "Stage 1 responses",
+       fill = "Certainty condition") +
+  theme(legend.position = c(0.7,.2)) +
+  scale_fill_manual(values = c("light blue", "light pink"))+
+  scale_x_continuous(breaks = 1:15) +
+  scale_y_continuous(limits = c(0,1))
+
+```
+
+Below is a plot of the distribution of probable responses in the first phase:
+
+```{r}
+
+data %>% 
+  filter(phase == 1,
+         accuracy != -99,
+         !is.na(prob_resp)) %>%
+  drop_na() %>% 
+  group_by(pNum, cert_cond) %>% 
+  summarise(meanProb = mean(prob_resp)) %>% 
+  ggplot(aes(x = cert_cond, y = meanProb))+
+  geom_boxplot(width = .2) +
+  geom_point(size = 5, 
+             alpha = .2) +
+  geom_text_repel(aes(label = pNum), 
+                  direction = 'both', 
+                  nudge_x = .3,
+                  segment.colour = "red", 
+                  colour = "red", 
+                  segment.alpha = .2,
+                  size = 2) +
+  labs(title = "Boxplots with data labelled by participant ID",
+       y = "Mean Probable response",
+       x = "Certain condition") +
+  scale_y_continuous(limits = c(0,1)) +
+  theme_classic(base_size = 14)
+
+
+```
+
+### Phase 2
+
+Since all cue-outcome relationships are deterministic in Phase 2a and 2b, we plot accuracy of responses:
+
+
+```{r}
+
+data_p23 <- 
+  data %>% 
+  filter(phase > 1,
+         accuracy != -99) %>% 
+  mutate(cue_type = recode(cue_type, 
+                           "10_trials" = "long-change",
+                           "2_trials" = "short-change"))
+
+data_p23 %>% 
+  group_by(cert_cond, block, cue_type) %>% 
+  summarise(meanAcc = mean(accuracy)) %>% 
+  mutate(cue_type = as.factor(cue_type)) %>% 
+  ggplot(aes(x = block, colour = cue_type, y = meanAcc)) +
+  geom_point(size = 3) +
+  geom_line(aes(group = cue_type)) +
+  labs(x = "Blocks of 8 trials",
+       y = "Proportion of accurate responses",
+       title = "Accuracy of responses in stages 2 and 3",
+       colour = "Cue training schedule") +
+  facet_wrap(~cert_cond) +
+  theme_classic()
+
+data_p23_anova <- 
+  data_p23 %>% 
+  filter(block %in% c(16:19)) %>% 
+  group_by(pNum, cert_cond, cue_type, block) %>% 
+  summarise(meanAcc = mean(accuracy, na.rm = TRUE))
+
+p23_aov <- 
+  aov_car(meanAcc ~ cert_cond + Error(pNum/cue_type*block), data = data_p23_anova)
+
+```
+
+We can see that responding starts at chance level for the long-change cues, but recovers across Phase 2a (blocks 16-19). This recovery appears more rapid in the certain condition. To explore this, we ran an ANOVA on blocks 16 to 19, which revealed a "cue type" (long vs. short) by "certainty condition" (certain vs. uncertain) interaction, `r apa(p23_aov, effect = "cert_cond:cue_type", force_sph_corr = TRUE)`, but not a three-way interaction with block, `r apa(p23_aov, effect = "cert_cond:cue_type:block", force_sph_corr = TRUE)`
+
+```{r}
+# compare just the long-change condition
+
+data_p23_anova_LC <- 
+  data_p23 %>% 
+  filter(block %in% c(16:19),
+         cue_type == "long-change") %>%
+  group_by(pNum, cert_cond, block) %>% 
+  summarise(meanAcc = mean(accuracy, na.rm = TRUE))
+
+p23_aov_LC <- 
+  aov_car(meanAcc ~ cert_cond + Error(pNum/block), data = data_p23_anova_LC)
+
+
+```
+
+Since we were primarily interested in how rapidly learning took place for the long-change condition in this phase, we ran an ANOVA with factors of "certainty condition" and block on the data from just the "long-change" cue type. This revealed a significant main effect of certainty condition, `r apa(p23_aov_LC, effect = "cert_cond", force_sph_corr = TRUE)`, and an interaction between certainty condition and block, `r apa(p23_aov_LC, effect = "cert_cond:block", force_sph_corr = TRUE)`.
+
+### Test ratings
+
+At test, participants rated the likelihood of each of the four outcomes, separately for each of the four cues in turn. We can see high causal ratings for the outcome cues were trained with in Phase 1, and somewhat higher causal ratings for the Phase 1 "alternative" outcome in the uncertain condition, compared to the certain condtiion (that is, the outcome presented on 20% of trials in Phase 1). 
+
+The critical data, relating to the new associations trained in Phase 2 and 3 are shown on the right hand side of each panel. Here we can see higher causal ratings for the long-change cues, and weaker ratings for the short-change cues. Contrary to our hypotheses, it appears that casual ratings are higher for short-change cues in the uncertain condition.
+
+```{r, fig.height=6, fig.width = 8}
+# 
+# # visualise test performance
+# 
+
+test_data_for_graph <- 
+  test_data %>%
+  mutate(association = fct_relevel(association, levels = c("phase_1", 
+                                                           "phase_1_alt",
+                                                           "phase_2_3",
+                                                           "not_paired")),
+         cue_type = recode(cue_type, 
+                           "10_trials" = "long-change",
+                           "2_trials" = "short-change")) %>% 
+  group_by(cert_cond, cue_type, association) %>%
+  summarise(meanRating = mean(rating),
+            seRating = sd(rating)/sqrt(n()))
+
+test_data_for_graph %>% 
+  ggplot(aes(x = association, 
+             y = meanRating, 
+             fill = cue_type)) +
+  geom_col(position = position_dodge2(), 
+           colour = "black",
+           size = 1,
+           alpha = .8) +
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 10), breaks = c(1:10)) +
+  geom_errorbar(aes(ymin = meanRating,
+                    ymax = meanRating + seRating),
+                position = position_dodge2(padding = .8), # padding controls width
+                size = 1) +
+  facet_wrap(~cert_cond) +
+  labs(title = "Test ratings",
+       subtitle = "Causal rating scores (1 to 10) by cue-type, association type, and certainty condition",
+       fill = "Cue type",
+       y = "Casual ratings",
+       x = "Cue-outcome association") +
+  geom_rect(inherit.aes = FALSE, 
+            aes(xmin = 2.5, xmax = 4.5, ymin = 0, ymax = 7),
+            alpha = .1,
+            fill = NA,
+            colour = "orange",
+            size = 2,
+            linetype = 3) +
+    theme_classic(base_size = 14) +
+  theme(axis.text.x = element_text(angle = 40, vjust = 1, hjust = 1, size = 10),
+        plot.subtitle = element_text(size = 10),
+        legend.text = element_text(size = 12),
+        legend.position = "bottom")
+
+```
+
+To explore these casual ratings further, we subtracted from the ratings for the Phase 2 and 3 outcomes (new associations in these phases), the ratings for those outcomes with which the cues were never paired. For example, for cue 1, we subtracted the rating for outcome 4 (never paired with cue 1) from the rating for outcome 3 (paired in Phase 2 and 3). These data are presented below 
+
+```{r}
+
+# work out how much was learned relative to baseline
+test_data <-
+  test_data %>%
+  select(pNum, cert_cond, cue, association, cue_type, rating) %>% 
+  mutate(cue_type = recode(cue_type, 
+                           "10_trials" = "long-change",
+                           "2_trials" = "short-change"))
+
+test_data_summary <-
+  test_data %>%
+  pivot_wider(names_from = association, values_from = rating) %>%
+  group_by(pNum, cert_cond, cue_type) %>%
+  summarise(across(not_paired:phase_1, mean)) %>%
+  mutate(phase_2_relative = phase_2_3 - not_paired)
+
+test_data_summary %>%
+  group_by(cert_cond, cue_type) %>%
+  summarise(phase_2_rel_mean = mean(phase_2_relative),
+            phase_2_rel_se = sd(phase_2_relative)/sqrt(n())) %>%
+  ggplot(aes(x = cert_cond, y = phase_2_rel_mean, fill = cue_type)) +
+  geom_col(position = position_dodge2(), 
+           colour = "black",
+           size = 1,
+           alpha = .8) +
+  geom_errorbar(aes(ymin = phase_2_rel_mean,
+                    ymax = phase_2_rel_mean + phase_2_rel_se),
+                position = position_dodge2(padding = .8), # padding controls width
+                size = 1) +
+  theme_classic(base_size = 14) +
+  labs(title = "Relative Test ratings",
+       subtitle = "Causal rating scores for Phase 2/3 outcomes minus ratings for unpaired outcomes",
+       y = "Diffential learning effect",
+       x = "Certainty condition",
+       fill = "Phase 2 association")+
+  theme(axis.text.x = element_text(size = 12),
+        plot.subtitle = element_text(size = 10))
+  
+
+test_aov <- 
+  aov_car(phase_2_relative ~ cert_cond + Error(pNum/cue_type), data = test_data_summary)
+
+```
+
+An ANOVA on these data revealed a significant main effect of cue-type, `r apa(test_aov, effect = "cue_type", force_sph_corr = TRUE)`, but no main effect of certainty condition, `r apa(test_aov, effect = "cert_cond", force_sph_corr = TRUE)` and no interaction effect, `r apa(test_aov, effect = "cert_cond:cue_type", force_sph_corr = TRUE)`.

@@ -1,0 +1,5 @@
+exp_code,pNum,age,gender,out_order,cue,outcome,rating,rating_rt
+UNW01,333,33,NA,[1 2 3 4],2,1.0,4.0,6.28
+UNW01,333,33,NA,[1 2 3 4],2,2.0,5.0,6.278
+UNW01,333,33,NA,[1 2 3 4],2,3.0,4.0,6.277
+UNW01,333,33,NA,[1 2 3 4],2,4.0,5.0,6.276

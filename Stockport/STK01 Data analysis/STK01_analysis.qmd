@@ -1,0 +1,207 @@
+---
+title: "STK01_report"
+format: pdf
+editor: visual
+editor_options: 
+  chunk_output_type: console
+execute: 
+  echo: false
+  warning: false
+---
+
+## Quarto
+
+```{r}
+library(tidyverse)
+library(patchwork)
+
+load("STK01_all_data.RData")
+```
+
+## Design of the experiment
+
+
+| Stage 1 | Stage 2  | Stage 3  |
+|:--------|:---------|:---------|
+| AX-o1   | AX-o1/o2 | DX-o1    |
+| AY-o1   | AY-o1    | CY-o2    |
+| BX-o2   | BX-o2/o1 | AB-o1/o2 |
+| BY-o2   | BY-o2    |          |
+| C-o1    | C-o1     |          |
+| D-o2    | D-o2     |          |
+: STK01 design {tbl-colwidths="[20,20,20]"}
+
+### accuracy of participants in phase 1
+
+```{r}
+
+# create variable that reflects order of tt
+all_data <- 
+  all_data %>% 
+  group_by(pNum, phase, tt) %>% 
+  mutate(tt_order = 1:n(), .after = tt)
+
+stg1_acc <- 
+  all_data %>% 
+  filter(block %in% c(7:12)) %>% # second half of stage 1
+  group_by(pNum) %>% 
+  summarise(mean_stg1_acc = mean(accuracy, na.rm = TRUE))
+
+CD_perf <- 
+  all_data %>% 
+  filter(phase == 2,
+         tt %in% c("C", "D")) %>% 
+  group_by(pNum) %>% 
+  summarise(mean_CD_Acc = mean(accuracy, na.rm = TRUE))
+
+
+perf_check <-  left_join(stg1_acc, CD_perf, by = "pNum")
+
+weak_pNum <- 
+  perf_check %>% 
+  filter(mean_stg1_acc < .8 | mean_CD_Acc < .8) %>% 
+  select(pNum) %>% 
+  pull()
+  
+
+
+```
+
+### accuracy by phase
+
+```{r}
+acc_by_phase <- 
+all_data %>% 
+  group_by(pNum, phase) %>% 
+  summarise(meanAcc = mean(accuracy, na.rm = TRUE))
+  
+acc_by_phase %>% 
+  ggplot(aes(x = phase, y = meanAcc)) +
+  geom_violin() +
+  geom_jitter(width = .05, height = 0)
+
+
+```
+
+### accuracy by phase and trial type
+
+```{r}
+
+acc_by_tt <- 
+all_data %>% 
+  filter(! pNum %in% weak_pNum) %>% 
+  group_by(pNum, tt, phase) %>% 
+  summarise(meanAcc = mean(accuracy, na.rm = TRUE))
+  
+acc_by_tt %>% 
+  ggplot(aes(x = tt, y = meanAcc)) +
+  geom_violin(aes(fill = tt)) +
+  geom_jitter(width = .2, height = 0) +
+  facet_grid(~phase) +
+  theme_light(base_size = 24)
+
+
+```
+
+
+
+
+### plotting means across blocks
+
+```{r}
+
+acc_by_block <- 
+  all_data %>% 
+  group_by(phase, tt, tt_order) %>% 
+  summarise(meanAcc = mean(accuracy, na.rm = TRUE))
+
+# # Stage 1
+# acc_by_block %>% 
+#   filter(phase == 1) %>% 
+#   ggplot(aes(x = tt_order, y = meanAcc, colour = tt)) +
+#   geom_point(size = 4) +
+#   geom_line(size = 1)
+
+
+# Stage 3
+acc_by_block %>% 
+  filter(phase == 3) %>% 
+  ggplot(aes(x = tt_order, y = meanAcc, colour = tt)) +
+  geom_point(size = 4) +
+  geom_line(size = 1) +
+  facet_wrap(~tt)  +
+  theme_light()
+
+# Ps removed
+N_60_plot <-
+  all_data %>% 
+  group_by(phase, tt, tt_order) %>% 
+  summarise(meanAcc = mean(accuracy, na.rm = TRUE)) %>% 
+  filter(phase == 3, 
+         tt %in% c("CY", "DX")) %>% 
+  ggplot(aes(x = tt_order, y = meanAcc, colour = tt)) +
+  geom_point(size = 4) +
+  geom_line(size = 1) +
+  theme_light(base_size = 24) +
+  labs(title = "Full sample: N = 60")
+
+N_29_plot <- 
+  all_data %>% 
+  filter(! pNum %in% weak_pNum) %>% 
+  group_by(phase, tt, tt_order) %>% 
+  summarise(meanAcc = mean(accuracy, na.rm = TRUE)) %>% 
+  filter(phase == 3, 
+         tt %in% c("CY", "DX")) %>% 
+  ggplot(aes(x = tt_order, y = meanAcc, colour = tt)) +
+  geom_point(size = 4) +
+  geom_line(size = 1) +
+  theme_light(base_size = 24) +
+  labs(title = "Best Ps: N = 29")
+
+N_60_plot/N_29_plot
+
+```
+
+
+```{r}
+# stats on stage 3
+
+stg3_CX_DY <- 
+  all_data %>%
+  #filter(! pNum %in% weak_pNum) %>%
+  filter(phase == 3,
+         tt_order <5,
+         tt %in% c("CY", "DX")) %>% 
+  group_by(pNum, tt) %>% 
+  summarise(meanAcc = mean(accuracy, na.rm = TRUE))
+
+t.test(meanAcc ~ tt, data = stg3_CX_DY, paired = TRUE)
+
+
+```
+
+
+
+## Possible designs for Experiment 2
+
+ver 2.1
+
+| Stage 1 | Stage 2  | Stage 3  |
+|:--------|:---------|:---------|
+| AX-o1   | AX-o1/o2 | XA-o1    |
+| AY-o1   | AY-o1    | XB-o1    |
+| BX-o2   | BX-o2/o1 | YA-o2    |
+| BY-o2   | BY-o2    | YB-o2    |
+        |
+: STK02 design {tbl-colwidths="[20,20,20]"}
+
+ver 2.2
+
+| Stage 1 | Stage 2  | Stage 3  |
+|:--------|:---------|:---------|
+| AX-o1   | AX-o1/o2 | XA-o1    |
+| AY-o1   | AY-o1/o2 | XB-o1    |
+| BX-o2   | BX-o2    | YA-o2    |
+| BY-o2   | BY-o2    | YB-o2    |
+        |
+: STK02 design {tbl-colwidths="[20,20,20]"}
