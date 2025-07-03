@@ -1,0 +1,109 @@
+---
+title: "Stockport simulations"
+format: pdf
+editor: visual
+editor_options: 
+  chunk_output_type: console
+execute: 
+  warning: false
+---
+
+```{r}
+library(calmr)
+library(tidyverse)
+
+theme_set(theme_minimal(base_size = 14))
+```
+
+# Mackintosh 1975 simulations
+
+## Does pretraining A and B weaken this effect (of X \> Y)?
+
+### Design:
+
+|  Phase 1  | Phase 2 |
+|:---------:|:-------:|
+| (10 each) |         |
+|   AV-O1   |  AV-O1  |
+|   AW-O1   |         |
+|   BV-O2   |  BW-O2  |
+|   BW-O2   |         |
+
+```{r}
+STK_pre <- data.frame(
+  Group = c("certain", "certain-uncertain", "uncertain"),
+  Phase1 = c("10AV(O1)/10AW(O1)/10BV(O2)/10BW(O2)", 
+             "10AV(O1)/10AW(O1)/10BV(O2)/10BW(O2)",
+             "6AV(O1)/4AV(O2)/6AW(O1)/4AW(O2)/6BV(O2)/4BV(O1)/6BW(O2)/4BW(O1)"),
+  R1 = c(TRUE),
+  Phase2 = c("5AV(O1)/5AW(O1)/5BV(O2)/5BW(O2)", 
+             "3AV(O1)/2AV(O2)/3AW(O1)/2AW(O2)/3BV(O2)/2BV(O1)/3BW(O2)/2BW(O1)",
+             "3AV(O1)/2AV(O2)/3AW(O1)/2AW(O2)/3BV(O2)/2BV(O1)/3BW(O2)/2BW(O1)"),
+  R2 = c(TRUE),
+  Phase3 = c("10AV(O1)/10BW(O2)",
+             "10AV(O1)/10BW(O2)",
+             "10AV(O1)/10BW(O2)"),
+  R3 = c(TRUE),
+  Test = c("1#A/1#B/1#V/1#W", 
+           "1#A/1#B/1#V/1#W",
+           "1#A/1#B/1#V/1#W"),
+  R4 = c(TRUE)
+)
+# parsing the design and showing the original and what was detected
+parsed <- parse_design(STK_pre)
+
+pars_MAC1975 <- get_parameters(STK_pre, model = "MAC1975")
+
+# set to original model with no WCA
+pars_MAC1975$gammas[c("A","B","V","W")] <- 0
+pars_MAC1975$gammas[c("O1","O2")] <- 1
+
+```
+
+### Run simulation
+
+```{r}
+STK_pre <- run_experiment(
+  STK_pre, # note we do not need to pass the parsed design
+  model = "MAC1975",
+  parameters = pars_MAC1975,
+  iterations = 500
+)
+```
+
+### Plot the results
+
+```{r}
+# calculate and plot Vs
+
+vs_res <-
+  results(STK_pre)[["vs"]] %>%
+  filter(s1 %in% c("A", "B", "V", "W"),
+         s2 %in% c("O1", "O2")) %>%
+  group_by(group, trial, s1, s2) %>%
+  summarise(value = mean(value))
+
+vs_res %>%
+  ggplot(aes(x = trial, y = value, colour = s1)) +
+  geom_line() +
+  facet_grid(rows = vars(group), cols = vars(s2)) +
+  labs(title = "Associative Strengths",
+       colour = "Cue")
+
+# calculate and plot Alphas
+
+alphas_res <-
+  results(STK_pre)[["as"]] %>%
+  filter(s1 %in% c("A", "B", "C", "D", "V", "W")) %>% 
+  group_by(group, trial, s1) %>%
+  summarise(value = mean(value))
+
+alphas_res %>%
+  ggplot(aes(x = trial, y = value, colour = s1)) +
+  geom_line() +
+  facet_grid(rows = vars(group)) +
+  labs(title = "Alphas")
+
+save(vs_res, alphas_res, file = "UNLL01_sim_results.RData")
+
+```

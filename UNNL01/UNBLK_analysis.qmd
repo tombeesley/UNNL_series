@@ -1,0 +1,202 @@
+---
+title: "UNBLK_TB_analysis"
+author: "Tom Beesley"
+format: html
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+library(tidyverse)
+library(BayesFactor)
+library(afex)
+library(scales)
+
+
+load("UNL03_proc_data.RData")
+
+
+training <- 
+  training %>% 
+  select(pNum, condition, stage, block, acc = correct_answer, rt = cue_o_mouse.time)
+
+p_stage1_avgs <- 
+  training %>% 
+  filter(stage == "stage1") %>% 
+  group_by(pNum, condition) %>% 
+  summarise(mean_acc = mean(acc, na.rm = TRUE),
+            mean_rt = mean(rt, na.rm = TRUE)) %>% 
+  group_by(condition) %>% 
+  arrange(desc(mean_acc)) %>% 
+  mutate(condition_rank = 1:n()) %>% 
+  ungroup()
+
+training <- 
+  training %>% 
+  left_join(p_stage1_avgs, by = c("pNum", "condition"))
+
+p_avgs <- 
+  training %>% 
+  filter(condition_rank <= 20) %>% 
+  group_by(pNum, condition, block) %>% 
+  summarise(mean_acc = mean(acc, na.rm = TRUE))
+  
+group_avgs <- 
+  p_avgs %>% 
+  group_by(condition, block) %>% 
+  summarise(group_mean_acc = mean(mean_acc, na.rm = TRUE),
+            group_se_acc = sd(mean_acc, na.rm = TRUE)/sqrt(n()))
+
+group_avgs %>% 
+  ggplot(aes(x = block, y = group_mean_acc, colour = condition, group = condition)) +
+  geom_point(size = 4) +
+  geom_line(linewidth = .5) +
+  geom_errorbar(aes(ymin = group_mean_acc - group_se_acc, 
+                    ymax = group_mean_acc + group_se_acc),
+                width = .2) +
+  theme_classic()
+
+```
+
+
+```{r}
+
+p_stage1_avgs %>% 
+  ggplot(aes(x = condition, y = mean_acc)) +
+  geom_violin() +
+  geom_jitter()
+
+
+```
+
+```{r}
+
+p_avgs_test <- 
+  test %>% 
+  drop_na(O1_rating, O2_rating) %>% 
+  filter(pNum != 89) %>%
+  group_by(pNum, stage, block, condition, testcue) %>% 
+  summarise(avgO1 = mean(O1_rating, na.rm = TRUE),
+            avgO2 = mean(O2_rating, na.rm = TRUE))
+  
+
+grp_avgs_test <- 
+  p_avgs_test %>% 
+  pivot_longer(cols = avgO1:avgO2, 
+               values_to = "mean_rating", 
+               names_to = "outcome", 
+               names_prefix = "avgO") %>% 
+  group_by(condition, stage, testcue, outcome) %>% 
+  summarise(grp_avg = mean(mean_rating),
+            grp_se = sd(mean_rating)/sqrt(n()))
+
+# plotting individual cues
+grp_avgs_test %>% 
+  ggplot(aes(x = testcue, y = grp_avg, fill = outcome)) +
+  geom_col(position = position_dodge()) +
+  facet_wrap(vars(condition, stage))
+
+# combine data into P and NP cue types
+p_pred_avgs <- 
+  p_avgs_test %>% 
+  mutate(rating_diff = avgO1-avgO2,
+         rating_diff_adj = case_match(testcue,
+                                      "A"~rating_diff,
+                                      "B"~-rating_diff,
+                                      "X"~rating_diff,
+                                      "Y"~-rating_diff),
+         cue_type = case_match(testcue,
+                               "A"~"P",
+                               "B"~"P",
+                               "X"~"NP",
+                               "Y"~"NP")) %>% 
+  group_by(pNum, condition, stage, block, cue_type) %>% 
+  summarise(avg_diff_score = round(mean(rating_diff_adj),3)) %>% 
+  ungroup() %>% 
+  mutate(across(pNum:cue_type, as.factor),
+         cue_type = fct_relevel(cue_type, "P"))
+
+# join to data on stage 1 performance
+p_stage1_avgs <- 
+  p_stage1_avgs %>% 
+  mutate(across(c(pNum,condition), as.factor))
+
+p_pred_avgs <- 
+  p_pred_avgs %>% 
+  left_join(p_stage1_avgs, by = c("pNum", "condition"))
+         
+p_pred_avgs %>%
+  filter(condition_rank <= 20) %>% 
+  group_by(condition, stage, cue_type) %>% 
+  summarise(grp_avg = mean(avg_diff_score),
+            grp_se = sd(avg_diff_score)/sqrt(n())) %>% 
+  ggplot(aes(x = condition, y = grp_avg, fill = cue_type)) +
+  geom_col(position = position_dodge(.9), colour = "black") +
+  geom_errorbar(aes(ymin = grp_avg - grp_se,
+                    ymax = grp_avg + grp_se),
+                position = position_dodge(.9),
+                width = .2) +
+  labs(title = "Stage 3 test data",
+       y = "Rating difference score",
+       fill = element_blank())+
+  facet_wrap(vars(stage)) +
+  theme_classic(base_size = 14) +
+  scale_fill_manual(values = palette()[3:2])
+
+# plot as line across the stage 3 tests
+p_pred_avgs %>%
+  filter(condition_rank <= 20,
+         block %in% 6:8) %>% 
+  group_by(condition, block, cue_type) %>% 
+  summarise(grp_avg = mean(avg_diff_score),
+            grp_se = sd(avg_diff_score)/sqrt(n())) %>% 
+  ggplot(aes(x = block, y = grp_avg, colour = cue_type)) +
+  geom_line(aes(group=cue_type)) +
+  geom_errorbar(aes(ymin = grp_avg - grp_se,
+                    ymax = grp_avg + grp_se),
+                width = .2) +
+  labs(title = "Stage 3 test data",
+       y = "Rating difference score",
+       fill = element_blank())+
+  facet_wrap(vars(condition)) +
+  theme_classic(base_size = 14) +
+  scale_colour_manual(values = palette()[3:2])
+  
+
+
+  
+
+
+```
+
+```{r}
+stg3_test <- 
+  p_pred_avgs %>% 
+  filter(condition_rank <= 20) %>%
+  filter(stage == "stage3") 
+
+# Bayesian ANOVA
+stg3_BF <- 
+  anovaBF(avg_diff_score ~ condition*cue_type, 
+          data = stg3_test, 
+          whichRandom = "pNum")
+
+stg3_BF[4]/stg3_BF[3]
+
+# Traditional ANOVA
+stg3_anova <- 
+  aov_car(avg_diff_score ~ condition + Error(pNum/cue_type),
+          data = stg3_test)
+
+# add emmeans
+
+# add stage 1 and 2 anova
+
+# add learning graphs
+
+# add comp modelling data
+
+
+```
+
+
