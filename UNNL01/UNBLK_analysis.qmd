@@ -10,6 +10,7 @@ editor_options:
 library(tidyverse)
 library(BayesFactor)
 library(afex)
+library(emmeans)
 library(scales)
 
 
@@ -170,6 +171,9 @@ p_pred_avgs %>%
 ```
 
 ```{r}
+# add stage 1 and 2 anova
+
+# get stage 3 data
 stg3_test <- 
   p_pred_avgs %>% 
   filter(condition_rank <= 20) %>%
@@ -188,14 +192,21 @@ stg3_anova <-
   aov_car(avg_diff_score ~ condition + Error(pNum/cue_type),
           data = stg3_test)
 
-# add emmeans
+# cue_type effect for each condition
+emmeans(stg3_anova, pairwise ~ cue_type | condition)
 
-# add stage 1 and 2 anova
+# condition effect for each cue_type
+emmeans(stg3_anova, pairwise ~ condition | cue_type)
+```
 
-# add learning graphs
 
+```{r}
 # add comp modelling data
 
+load("Simulations NP learning/UNLL01_sim_results.RData")
+
+vs_res %>% 
+  
 
 ```
 
