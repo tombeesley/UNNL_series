@@ -12,10 +12,9 @@ library(BayesFactor)
 library(afex)
 library(emmeans)
 library(scales)
-
+library(patchwork)
 
 load("UNL03_proc_data.RData")
-
 
 training <- 
   training %>% 
@@ -62,16 +61,15 @@ group_avgs %>%
 
 ```{r}
 
-p_stage1_avgs %>% 
-  ggplot(aes(x = condition, y = mean_acc)) +
-  geom_violin() +
-  geom_jitter()
+# p_stage1_avgs %>% 
+#   ggplot(aes(x = condition, y = mean_acc)) +
+#   geom_violin() +
+#   geom_jitter()
 
 
 ```
 
 ```{r}
-
 p_avgs_test <- 
   test %>% 
   drop_na(O1_rating, O2_rating) %>% 
@@ -125,8 +123,70 @@ p_stage1_avgs <-
 p_pred_avgs <- 
   p_pred_avgs %>% 
   left_join(p_stage1_avgs, by = c("pNum", "condition"))
-         
-p_pred_avgs %>%
+```
+
+
+```{r}
+
+# add comp modelling data
+
+# load in the RW72 results
+load("Simulations NP learning/UNLL01_RW72_results.RData")
+RW72_raw <- vs_res
+RW72_raw <- RW72_raw %>% mutate(model = "RW72", .before = 1) %>% ungroup()
+
+# load in the Mack75 results
+load("Simulations NP learning/UNLL01_Mack75_results.RData")
+Mack75_raw <- vs_res 
+Mack75_raw <- Mack75_raw %>% mutate(model = "Mack75", .before = 1) %>% ungroup()
+
+complete_sims <- rbind(RW72_raw, Mack75_raw)
+
+# generic function for plotting raw sim results as line graphs
+make_model_line_plot <- function(dataIn, titleIn = "default_title") {
+  dataIn %>% 
+    ggplot(aes(x = trial, y = value, colour = s1)) +
+    geom_line() +
+    facet_grid(rows = vars(group), cols = vars(s2)) +
+    labs(title = titleIn,
+        colour = "Cue")
+  }
+
+# plot RW72 raw sim results as line graph for both associations
+RW72_line_plot <- 
+  filter(complete_sims, model == "RW72") %>% 
+    make_model_line_plot(title = "RW72 line plot all stages")
+
+# plot Mack75 raw sim results as line graph for both associations
+Mack75_line_plot <- 
+  filter(complete_sims, model == "Mack75") %>% 
+    make_model_line_plot(title = "Mack75 line plot all stages")
+
+# calculate differential V for cue types
+sim_data_cue_types <- 
+  complete_sims %>% 
+  pivot_wider(names_from = s2, values_from = value) %>% 
+  mutate(diff_v = case_match(s1,
+                            "A" ~ O1-O2,
+                            "B" ~ O2-O1,
+                            "V" ~ O1-O2,
+                            "W" ~ O2-O1),
+        stage = case_when(trial < 120 ~ 1,
+                          trial <= 200 ~ 2,
+                          trial > 200 ~ 3),
+        cue_type = case_match(s1,
+                            "A" ~ "P",
+                            "B" ~ "P",
+                            "V" ~ "NP",
+                            "W" ~ "NP"),
+        cue_type = fct_relevel(cue_type, "P")) %>% 
+  select(model, condition = group, stage, trial, cue_type, diff_v)
+
+
+
+# summarise and plot empirical data for cue_types for each stage
+emp_data_fig <- 
+  p_pred_avgs %>%
   filter(condition_rank <= 20) %>% 
   group_by(condition, stage, cue_type) %>% 
   summarise(grp_avg = mean(avg_diff_score),
@@ -137,14 +197,43 @@ p_pred_avgs %>%
                     ymax = grp_avg + grp_se),
                 position = position_dodge(.9),
                 width = .2) +
-  labs(title = "Stage 3 test data",
+  labs(title = "Empirical test data across stages",
        y = "Rating difference score",
        fill = element_blank())+
   facet_wrap(vars(stage)) +
   theme_classic(base_size = 14) +
   scale_fill_manual(values = palette()[3:2])
 
-# plot as line across the stage 3 tests
+# summarise and plot computational modelling data for cue_types for each stage
+make_model_col_plot <- function(dataIn, titleIn = "default_title") {
+  
+  dataIn %>% 
+  group_by(condition, stage, cue_type) %>% 
+  summarise(meanV = round(mean(diff_v),3)) %>% 
+  ggplot(aes(x = condition, y = meanV, fill = cue_type)) +
+  geom_col(position = position_dodge(.9), colour = "black") +
+  labs(title = titleIn,
+       y = "Differential associative strength",
+       fill = element_blank())+
+  facet_wrap(vars(stage)) +
+  theme_classic(base_size = 14) +
+  scale_fill_manual(values = palette()[3:2])
+  
+}
+
+mack75_fig <- 
+  sim_data_cue_types %>% 
+  filter(model == "Mack75") %>% 
+  make_model_col_plot(titleIn = "Mack75 simulation")
+
+RW72_fig <- 
+  sim_data_cue_types %>% 
+  filter(model == "RW72") %>% 
+  make_model_col_plot(titleIn = "RW72 simulation")
+
+emp_data_fig / mack75_fig / RW72_fig
+
+# plot test data as acquisition lines across the stage 3 tests
 p_pred_avgs %>%
   filter(condition_rank <= 20,
          block %in% 6:8) %>% 
@@ -201,12 +290,43 @@ emmeans(stg3_anova, pairwise ~ condition | cue_type)
 
 
 ```{r}
-# add comp modelling data
 
-load("Simulations NP learning/UNLL01_sim_results.RData")
+# are test scores in Stage 3 different to Stage 2?
 
-vs_res %>% 
-  
+# get stage 3 data
+stg2_3_test <- 
+  p_pred_avgs %>% 
+  filter(condition_rank <= 20) %>%
+  filter(stage == "stage3" | stage == "stage2") 
+
+# Bayesian ANOVA
+stg2_3_BF <- 
+  anovaBF(avg_diff_score ~ condition*stage*cue_type, 
+          data = stg2_3_test, 
+          whichRandom = "pNum")
+
+stg2_3_BF[18]/stg2_3_BF[12]
+
+# Traditional ANOVA
+stg2_3_anova <- 
+  aov_car(avg_diff_score ~ condition + Error(pNum/(cue_type*stage)),
+          data = stg2_3_test)
+
+# stage effect for each condition
+NP_stage_effect <- 
+  p_pred_avgs %>% 
+  filter(condition_rank <= 20) %>%
+  filter(cue_type == "NP") %>% 
+  filter(stage == "stage3" | stage == "stage2") 
+
+NP_stage_anova <- 
+  aov_car(avg_diff_score ~ condition + Error(pNum/(stage)),
+          data = NP_stage_effect)
+
+emmeans(NP_stage_anova, pairwise ~ stage | condition)
+
+
+
 
 ```
 

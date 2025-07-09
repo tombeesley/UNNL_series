@@ -32,42 +32,35 @@ theme_set(theme_minimal(base_size = 14))
 ```{r}
 UNBLK01_design <- data.frame(
   Group = c("certain", "certain-uncertain", "uncertain"),
-  Phase1 = c("30AV(O1)/30AW(O1)/30BV(O2)/30BW(O2)", 
-             "30AV(O1)/30AW(O1)/30BV(O2)/30BW(O2)",
-             "24AV(O1)/6AV(O2)/24AW(O1)/6AW(O2)/24BV(O2)/6BV(O1)/24BW(O2)/6BW(O1)"),
-  R1 = c(TRUE),
-  Phase2 = c("20AV(O1)/20AW(O1)/20BV(O2)/20BW(O2)", 
-             "16AV(O1)/4AV(O2)/16AW(O1)/4AW(O2)/16BV(O2)/4BV(O1)/16BW(O2)/4BW(O1)",
-             "16AV(O1)/4AV(O2)/16AW(O1)/4AW(O2)/16BV(O2)/4BV(O1)/16BW(O2)/4BW(O1)"),
-  R2 = c(TRUE),
-  Phase3 = c("60AV(O1)/60BW(O2)",
-             "60AV(O1)/60BW(O2)",
-             "60AV(O1)/60BW(O2)"),
-  R3 = c(TRUE)
+  Phase1 = c("!30AV>(O1)/30AW>(O1)/30BV>(O2)/30BW>(O2)", 
+             "!30AV>(O1)/30AW>(O1)/30BV>(O2)/30BW>(O2)",
+             "!24AV>(O1)/6AV>(O2)/24AW>(O1)/6AW>(O2)/24BV>(O2)/6BV>(O1)/24BW>(O2)/6BW>(O1)"),
+  Phase2 = c("!20AV>(O1)/20AW>(O1)/20BV>(O2)/20BW>(O2)", 
+             "!16AV>(O1)/4AV>(O2)/16AW>(O1)/4AW>(O2)/16BV>(O2)/4BV>(O1)/16BW>(O2)/4BW>(O1)",
+             "!16AV>(O1)/4AV>(O2)/16AW>(O1)/4AW>(O2)/16BV>(O2)/4BV>(O1)/16BW>(O2)/4BW>(O1)"),
+  Phase3 = c("!60AV>(O1)/60BW>(O2)",
+             "!60AV>(O1)/60BW>(O2)",
+             "!60AV>(O1)/60BW>(O2)")
 )
 
 UNBLK01_design_extreme <- data.frame(
   Group = c("certain", "certain-uncertain", "uncertain"),
-  Phase1 = c("10AV(O1)/10AW(O1)/10BV(O2)/10BW(O2)", 
-             "10AV(O1)/10AW(O1)/10BV(O2)/10BW(O2)",
-             "6AV(O1)/4AV(O2)/6AW(O1)/4AW(O2)/6BV(O2)/4BV(O1)/6BW(O2)/4BW(O1)"),
-  R1 = c(TRUE),
-  Phase2 = c("5AV(O1)/5AW(O1)/5BV(O2)/5BW(O2)", 
-             "3AV(O1)/2AV(O2)/3AW(O1)/2AW(O2)/3BV(O2)/2BV(O1)/3BW(O2)/2BW(O1)",
-             "3AV(O1)/2AV(O2)/3AW(O1)/2AW(O2)/3BV(O2)/2BV(O1)/3BW(O2)/2BW(O1)"),
-  R2 = c(TRUE),
-  Phase3 = c("10AV(O1)/10BW(O2)",
-             "10AV(O1)/10BW(O2)",
-             "10AV(O1)/10BW(O2)"),
-  R3 = c(TRUE)
+  Phase1 = c("!10AV>(O1)/10AW>(O1)/10BV>(O2)/10BW>(O2)", 
+             "!10AV>(O1)/10AW>(O1)/10BV>(O2)/10BW>(O2)",
+             "!6AV>(O1)/4AV>(O2)/6AW>(O1)/4AW>(O2)/6BV>(O2)/4BV>(O1)/6BW>(O2)/4BW>(O1)"),
+  Phase2 = c("!5AV>(O1)/5AW>(O1)/5BV>(O2)/5BW>(O2)", 
+             "!3AV>(O1)/2AV>(O2)/3AW>(O1)/2AW>(O2)/3BV>(O2)/2BV>(O1)/3BW>(O2)/2BW>(O1)",
+             "!3AV>(O1)/2AV>(O2)/3AW>(O1)/2AW>(O2)/3BV>(O2)/2BV>(O1)/3BW>(O2)/2BW>(O1)"),
+  Phase3 = c("!10AV>(O1)/10BW>(O2)",
+             "!10AV>(O1)/10BW>(O2)",
+             "!10AV>(O1)/10BW>(O2)")
 )
 
 simple_uncertainty_LP_design <- data.frame(
   Group = c("certain_LP", "uncertain_LP", "partial_simple"),
-  Phase1 = c("20AV(O1)/20AW(O1)/20BV(O2)/20BW(O2)", 
-             "16AV(O1)/4AV(O2)/16AW(O1)/4AW(O2)/16BV(O2)/4BV(O1)/16BW(O2)/4BW(O1)",
-             "32A(O1)/8A(O2)/32B(O2)/8B(O1)"),
-  R1 = c(TRUE)
+  Phase1 = c("!20AV>(O1)/20AW>(O1)/20BV>(O2)/20BW>(O2)", 
+             "!16AV>(O1)/4AV>(O2)/16AW>(O1)/4AW>(O2)/16BV>(O2)/4BV>(O1)/16BW>(O2)/4BW>(O1)",
+             "!32A>(O1)/8A>(O2)/32B>(O2)/8B>(O1)")
 )
 
 
@@ -102,6 +95,21 @@ UNBLK01_MK <- run_experiment(
 ### Plot the results - Mackintosh
 
 ```{r}
+
+# calculate and plot Alphas
+
+alphas_res <-
+  results(UNBLK01_MK)[["associabilities"]] %>%
+  filter(s1 %in% c("A", "B", "C", "D", "V", "W")) %>% 
+  group_by(group, trial, s1) %>%
+  summarise(value = mean(value))
+
+alphas_res %>%
+  ggplot(aes(x = trial, y = value, colour = s1)) +
+  geom_line() +
+  facet_grid(rows = vars(group)) +
+  labs(title = "Alphas")
+
 # calculate and plot Vs
 
 vs_res <-
@@ -126,25 +134,7 @@ vs_res %>%
                              "V" ~ O1-O2,
                              "W" ~ O2-O1))
 
-# calculate and plot Alphas
-
-alphas_res <-
-  results(UNBLK01_MK)[["associabilities"]] %>%
-  filter(s1 %in% c("A", "B", "C", "D", "V", "W")) %>% 
-  group_by(group, trial, s1) %>%
-  summarise(value = mean(value))
-
-alphas_res %>%
-  ggplot(aes(x = trial, y = value, colour = s1)) +
-  geom_line() +
-  facet_grid(rows = vars(group)) +
-  labs(title = "Alphas")
-
 save(vs_res, alphas_res, file = "UNLL01_Mack75_results.RData")
-
-
-
-
 
 ```
 
@@ -192,27 +182,33 @@ save(vs_res, file = "UNLL01_RW72_results.RData")
 ```
 
 
-### Run simulation - RW simple
-
+### Run simulation - PKH 
 ```{r}
 
-pars_RW1972 <- get_parameters(simple_uncertainty_LP_design, model = "RW1972")
+pars_PKH1982 <- get_parameters(UNBLK01_design, model = "PKH1982")
 
-LP_simple_RW <- run_experiment(
-  simple_uncertainty_LP_design, # note we do not need to pass the parsed design
-  model = "RW1972",
-  parameters = pars_RW1972,
-  iterations = 10
+# # set a lower learning rate
+# pars_RW1972$betas_on[] <- .2
+# pars_RW1972$betas_off[] <- .2
+
+
+UNBLK01_PKH <- run_experiment(
+  UNBLK01_design, # note we do not need to pass the parsed design
+  model = "PKH1982",
+  parameters = pars_PKH1982,
+  iterations = 50
 )
+
+
 ```
 
-### Plot the results - RW
+### Plot the results - PKH
 
 ```{r}
 # calculate and plot Vs
 
 vs_res <-
-  results(LP_simple_RW)[["associations"]] %>%
+  results(UNBLK01_PKH)[["associations"]] %>%
   filter(s1 %in% c("A", "B", "V", "W"),
          s2 %in% c("O1", "O2")) %>%
   group_by(group, trial, s1, s2) %>%
@@ -225,6 +221,7 @@ vs_res %>%
   labs(title = "Associative Strengths",
        colour = "Cue")
 
-save(vs_res, file = "UNLL01_RW72_results.RData")
+save(vs_res, file = "UNLL01_PKH82_results.RData")
 
 ```
+
