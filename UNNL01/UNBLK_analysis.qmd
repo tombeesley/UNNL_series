@@ -16,6 +16,8 @@ library(patchwork)
 
 load("UNL03_proc_data.RData")
 
+cond_colours <- c("#009E73", "#F0E442", "#0072B2", "#D55E00")
+
 training <- 
   training %>% 
   select(pNum, condition, stage, block, acc = correct_answer, rt = cue_o_mouse.time)
@@ -54,7 +56,8 @@ group_avgs %>%
   geom_errorbar(aes(ymin = group_mean_acc - group_se_acc, 
                     ymax = group_mean_acc + group_se_acc),
                 width = .2) +
-  theme_classic()
+  theme_classic() +
+  scale_color_manual(values = cond_colours)
 
 ```
 
