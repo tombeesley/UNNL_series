@@ -50,14 +50,22 @@ group_avgs <-
             group_se_acc = sd(mean_acc, na.rm = TRUE)/sqrt(n()))
 
 group_avgs %>% 
-  ggplot(aes(x = block, y = group_mean_acc, colour = condition, group = condition)) +
-  geom_point(size = 4) +
-  geom_line(linewidth = .5) +
+  ggplot(aes(x = block, y = group_mean_acc, 
+             colour = condition, fill = condition,  group = condition)) +
+  geom_line(linewidth = .6, colour = "black") +
   geom_errorbar(aes(ymin = group_mean_acc - group_se_acc, 
                     ymax = group_mean_acc + group_se_acc),
                 width = .2) +
-  theme_classic() +
-  scale_color_manual(values = cond_colours)
+  geom_point(size = 6, shape = 21, colour = "black") +
+  theme_classic(base_size = 16) +
+  scale_color_manual(values = cond_colours[c(1,3,4)]) +
+  scale_fill_manual(values = cond_colours[c(1,3,4)]) +
+  scale_x_continuous(breaks = 1:16) +
+  coord_cartesian(ylim = c(.5,1)) +
+  labs(y = "Prop. probable response (accuracy)",
+       x = "Block (20 trials)",
+       fill = "",
+       colour = "")
 
 ```
 
@@ -204,8 +212,8 @@ emp_data_fig <-
        y = "Rating difference score",
        fill = element_blank())+
   facet_wrap(vars(stage)) +
-  theme_classic(base_size = 14) +
-  scale_fill_manual(values = palette()[3:2])
+  theme_classic(base_size = 18) +
+  scale_fill_manual(values = c("black", "grey"))
 
 # summarise and plot computational modelling data for cue_types for each stage
 make_model_col_plot <- function(dataIn, titleIn = "default_title") {
@@ -220,7 +228,7 @@ make_model_col_plot <- function(dataIn, titleIn = "default_title") {
        fill = element_blank())+
   facet_wrap(vars(stage)) +
   theme_classic(base_size = 14) +
-  scale_fill_manual(values = palette()[3:2])
+  scale_fill_manual(values = c("black", "grey"))
   
 }
 
@@ -263,9 +271,60 @@ p_pred_avgs %>%
 ```
 
 ```{r}
-# add stage 1 and 2 anova
 
-# get stage 3 data
+# get STAGE 1 data
+stg1_test <- 
+  p_pred_avgs %>% 
+  filter(condition_rank <= 20) %>%
+  filter(stage == "stage1") 
+
+# Bayesian ANOVA
+stg1_BF <- 
+  anovaBF(avg_diff_score ~ condition*cue_type, 
+          data = stg1_test, 
+          whichRandom = "pNum")
+
+stg1_BF[4]/stg1_BF[3]
+
+# Traditional ANOVA
+stg1_anova <- 
+  aov_car(avg_diff_score ~ condition + Error(pNum/cue_type),
+          data = stg1_test)
+
+# cue_type effect for each condition
+emmeans(stg1_anova, pairwise ~ cue_type | condition)
+
+# condition effect for each cue_type
+emmeans(stg1_anova, pairwise ~ condition | cue_type)
+
+# get STAGE 2 data
+stg2_test <- 
+  p_pred_avgs %>% 
+  filter(condition_rank <= 20) %>%
+  filter(stage == "stage2") 
+
+# Bayesian ANOVA
+stg2_BF <- 
+  anovaBF(avg_diff_score ~ condition*cue_type, 
+          data = stg2_test, 
+          whichRandom = "pNum")
+
+stg2_BF[4]/stg2_BF[3]
+
+# Traditional ANOVA
+stg2_anova <- 
+  aov_car(avg_diff_score ~ condition + Error(pNum/cue_type),
+          data = stg2_test)
+
+# cue_type effect for each condition
+emmeans(stg2_anova, pairwise ~ cue_type | condition)
+
+# condition effect for each cue_type
+emmeans(stg2_anova, pairwise ~ condition | cue_type)
+
+
+
+# get STAGE 3 data
 stg3_test <- 
   p_pred_avgs %>% 
   filter(condition_rank <= 20) %>%
@@ -327,6 +386,8 @@ NP_stage_anova <-
           data = NP_stage_effect)
 
 emmeans(NP_stage_anova, pairwise ~ stage | condition)
+
+# are the 
 
 
 
