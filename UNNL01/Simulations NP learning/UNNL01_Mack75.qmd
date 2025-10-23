@@ -79,9 +79,12 @@ pars_MAC1975 <- get_parameters(UNBLK01_design, model = "MAC1975")
 pars_MAC1975$gammas[c("A","B","V","W")] <- 0
 pars_MAC1975$gammas[c("O1","O2")] <- 1
 
-# set a lower learning rate
+# set model parameters
 pars_MAC1975$betas_on[] <- .05
 pars_MAC1975$betas_off[] <- .05
+# pars_MAC1975$thetas[] <- .2
+# pars_MAC1975$min_alphas[] <- 0
+
 
 
 UNBLK01_MK <- run_experiment(
@@ -138,7 +141,6 @@ save(vs_res, alphas_res, file = "UNLL01_Mack75_results.RData")
 
 ```
 
-
 ### Run simulation - RW
 
 ```{r}
@@ -146,8 +148,8 @@ save(vs_res, alphas_res, file = "UNLL01_Mack75_results.RData")
 pars_RW1972 <- get_parameters(UNBLK01_design, model = "RW1972")
 
 # # set a lower learning rate
-# pars_RW1972$betas_on[] <- .2
-# pars_RW1972$betas_off[] <- .2
+pars_RW1972$betas_on[] <- .05
+pars_RW1972$betas_off[] <- .05
 
 
 UNBLK01_RW <- run_experiment(
@@ -181,22 +183,24 @@ save(vs_res, file = "UNLL01_RW72_results.RData")
 
 ```
 
+### Run simulation - PKH
 
-### Run simulation - PKH 
 ```{r}
 
 pars_PKH1982 <- get_parameters(UNBLK01_design, model = "PKH1982")
 
-# # set a lower learning rate
-# pars_RW1972$betas_on[] <- .2
-# pars_RW1972$betas_off[] <- .2
+# set learning rate
+pars_PKH1982$betas_ex[] <- .2
+pars_PKH1982$betas_in[] <- .2
+pars_PKH1982$gammas[] <- .1
+
 
 
 UNBLK01_PKH <- run_experiment(
   UNBLK01_design, # note we do not need to pass the parsed design
   model = "PKH1982",
   parameters = pars_PKH1982,
-  iterations = 50
+  iterations = 10
 )
 
 
@@ -224,4 +228,3 @@ vs_res %>%
 save(vs_res, file = "UNLL01_PKH82_results.RData")
 
 ```
-

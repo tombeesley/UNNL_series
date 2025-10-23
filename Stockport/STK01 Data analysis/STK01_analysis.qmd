@@ -20,7 +20,6 @@ load("STK01_all_data.RData")
 
 ## Design of the experiment
 
-
 | Stage 1 | Stage 2  | Stage 3  |
 |:--------|:---------|:---------|
 | AX-o1   | AX-o1/o2 | DX-o1    |
@@ -29,7 +28,8 @@ load("STK01_all_data.RData")
 | BY-o2   | BY-o2    |          |
 | C-o1    | C-o1     |          |
 | D-o2    | D-o2     |          |
-: STK01 design {tbl-colwidths="[20,20,20]"}
+
+: STK01 design {tbl-colwidths="\[20,20,20\]"}
 
 ### accuracy of participants in phase 1
 
@@ -103,9 +103,6 @@ acc_by_tt %>%
 
 ```
 
-
-
-
 ### plotting means across blocks
 
 ```{r}
@@ -162,46 +159,44 @@ N_60_plot/N_29_plot
 
 ```
 
-
 ```{r}
 # stats on stage 3
 
 stg3_CX_DY <- 
   all_data %>%
-  #filter(! pNum %in% weak_pNum) %>%
+  filter(! pNum %in% weak_pNum) %>%
   filter(phase == 3,
-         tt_order <5,
+         tt_order <=4,
          tt %in% c("CY", "DX")) %>% 
-  group_by(pNum, tt) %>% 
+  group_by(pNum, tt, tt_order) %>% 
   summarise(meanAcc = mean(accuracy, na.rm = TRUE))
 
-t.test(meanAcc ~ tt, data = stg3_CX_DY, paired = TRUE)
-
+aov_car(meanAcc ~ Error(pNum/(tt*tt_order)),data = stg3_CX_DY)
 
 ```
-
-
 
 ## Possible designs for Experiment 2
 
 ver 2.1
 
-| Stage 1 | Stage 2  | Stage 3  |
-|:--------|:---------|:---------|
-| AX-o1   | AX-o1/o2 | XA-o1    |
-| AY-o1   | AY-o1    | XB-o1    |
-| BX-o2   | BX-o2/o1 | YA-o2    |
-| BY-o2   | BY-o2    | YB-o2    |
-        |
-: STK02 design {tbl-colwidths="[20,20,20]"}
+| Stage 1 | Stage 2  | Stage 3 |
+|:--------|:---------|:--------|
+| AX-o1   | AX-o1/o2 | XA-o1   |
+| AY-o1   | AY-o1    | XB-o1   |
+| BX-o2   | BX-o2/o1 | YA-o2   |
+| BY-o2   | BY-o2    | YB-o2   |
+|         |          |         |
+
+: STK02 design {tbl-colwidths="\[20,20,20\]"}
 
 ver 2.2
 
-| Stage 1 | Stage 2  | Stage 3  |
-|:--------|:---------|:---------|
-| AX-o1   | AX-o1/o2 | XA-o1    |
-| AY-o1   | AY-o1/o2 | XB-o1    |
-| BX-o2   | BX-o2    | YA-o2    |
-| BY-o2   | BY-o2    | YB-o2    |
-        |
-: STK02 design {tbl-colwidths="[20,20,20]"}
+| Stage 1 | Stage 2  | Stage 3 |
+|:--------|:---------|:--------|
+| AX-o1   | AX-o1/o2 | XA-o1   |
+| AY-o1   | AY-o1/o2 | XB-o1   |
+| BX-o2   | BX-o2    | YA-o2   |
+| BY-o2   | BY-o2    | YB-o2   |
+|         |          |         |
+
+: STK02 design {tbl-colwidths="\[20,20,20\]"}
